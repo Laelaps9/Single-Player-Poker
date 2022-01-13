@@ -1,3 +1,5 @@
+use single_player_poker as poker;
+
 fn main() {
-    println!("Hello, world!");
+    let mut _deck = poker::generate_deck();
 }
