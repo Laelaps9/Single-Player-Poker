@@ -2,10 +2,12 @@ use single_player_poker as poker;
 
 fn main() {
     let mut deck = poker::generate_deck();
+    let cards = poker::deal(&mut deck);
 
-    let cards = poker::deal(deck);
-
-    for card in cards {
-        println!("{:?}", card);
+    println!("Your cards:");
+    for (i, card) in cards.iter().enumerate() {
+        println!("{}) {}", i, card);
     }
+
+
 }

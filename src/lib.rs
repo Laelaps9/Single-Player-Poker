@@ -1,45 +1,147 @@
 use rand::seq::SliceRandom;
-use std::collections::HashMap;
+use rand::thread_rng;
+use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Card {
     pub suit: String,
-    pub value: char,
+    pub value: u8,
 }
 
 impl Card {
-    pub fn new(s: String, val: char) -> Card {
-        let suit = s.clone();
-        let value = val;
+    pub fn new(v: u8) -> Card {
+        let value = v;
 
-        Card {
-            suit,
-            value,
-        }
+        let suit = match (value - 1) / 13 {
+            0 => "Spades".to_string(),
+            1 => "Hearts".to_string(),
+            2 => "Diamonds".to_string(),
+            3 => "Clubs".to_string(),
+            _ => panic!("Error"),
+        };
+
+        Card { suit, value }
     }
 }
 
-pub fn generate_deck() -> HashMap<String, Vec<char>> {
-    let mut deck = HashMap::new();
-    let cards = vec!['A', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K'];
+impl fmt::Display for Card {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tmp = self.value % 13;
+        let mut _r = String::new();
+        let rank = match tmp {
+            1 => "A",
+            2..=10 => {
+                _r = tmp.to_string();
+                _r.as_str()
+            }
+            11 => "J",
+            12 => "Q",
+            0 => "K",
+            _ => panic!("Error"),
+        };
 
-    deck.insert("Clubs".to_string(), cards.clone());
-    deck.insert("Hearts".to_string(), cards.clone());
-    deck.insert("Spades".to_string(), cards.clone());
-    deck.insert("Diamonds".to_string(), cards.clone());
-
-    return deck;
+        write!(f, "{} of {}", rank, self.suit)
+    }
 }
 
-pub fn deal(mut deck: HashMap<String, Vec<char>>) -> Vec<Card> {
-    let suits = ["Clubs", "Hearts", "Spades", "Diamonds"];
+pub fn generate_deck() -> Vec<u8> {
+    return (1..53).collect::<Vec<u8>>();
+}
+
+pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
     let mut cards: Vec<Card> = vec![];
+    let mut rng = thread_rng();
+
+    deck.shuffle(&mut rng);
 
     for _i in 0..5 {
-        let suit = suits.choose(&mut rand::thread_rng()).unwrap().to_string();
-        let value = deck.get_mut(&suit).unwrap().choose(&mut rand::thread_rng()).unwrap().clone();
-        cards.push(Card::new(suit, value));
+        let card_val = deck.pop().unwrap();
+
+        cards.push(Card::new(card_val));
     }
 
     return cards;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Tests to check if the correct suit is given to the 
+    // first and last card of each
+    #[test]
+    fn aces() {
+        assert_eq!(
+            Card::new(1),
+            Card {
+                suit: "Spades".to_string(),
+                value: 1,
+            }
+        );
+        
+        assert_eq!(
+            Card::new(13),
+            Card {
+                suit: "Spades".to_string(),
+                value: 13,
+            }
+        );
+    }
+
+    #[test]
+    fn hearts() {
+        assert_eq!(
+            Card::new(14),
+            Card {
+                suit: "Hearts".to_string(),
+                value: 14,
+            }
+        );
+        
+        assert_eq!(
+            Card::new(26),
+            Card {
+                suit: "Hearts".to_string(),
+                value: 26,
+            }
+        );
+    }
+
+    #[test]
+    fn diamonds() {
+        assert_eq!(
+            Card::new(27),
+            Card {
+                suit: "Diamonds".to_string(),
+                value: 27,
+            }
+        );
+        
+        assert_eq!(
+            Card::new(39),
+            Card {
+                suit: "Diamonds".to_string(),
+                value: 39,
+            }
+        );
+    }
+
+    #[test]
+    fn clubs() {
+        assert_eq!(
+            Card::new(40),
+            Card {
+                suit: "Clubs".to_string(),
+                value: 40,
+            }
+        );
+        
+        assert_eq!(
+            Card::new(52),
+            Card {
+                suit: "Clubs".to_string(),
+                value: 52,
+            }
+        );
+    }
 }
