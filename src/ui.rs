@@ -81,6 +81,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let menu_titles = vec!["Home", "Poker", "Tutorial"];
     let mut active_menu_item = MenuItem::Home;
 
+    // Stateful list where cards will be stored
+    let mut hand_list_state = ListState::default();
+    hand_list_state.select(Some(0));
+
     // Render loop
     loop {
         // Terminal is separated vertically into 3 sections
@@ -138,7 +142,17 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 
             match active_menu_item {
                 MenuItem::Home => rect.render_widget(render_home(), chunks[1]),
-                MenuItem::Poker => {},
+                MenuItem::Poker => {
+                    let poker_chunks = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints(
+                            [Constraint::Percentage(10), Constraint::Percentage(90)].as_ref(),
+                        )
+                        .split(chunks[1]);
+                    let (score, game) = render_poker(&hand_list_state);
+                    rect.render_widget(score, poker_chunks[0]);
+                    rect.render_stateful_widget(game, poker_chunks[1], &mut hand_list_state);
+                },
                 MenuItem::Tutorial => {},
             }
 
@@ -155,6 +169,20 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('h') => active_menu_item = MenuItem::Home,
                 KeyCode::Char('p') => active_menu_item = MenuItem::Poker,
                 KeyCode::Char('t') => active_menu_item = MenuItem::Tutorial,
+                KeyCode::Down => {
+                    if let Some(selected) = hand_list_state.selected() {
+                        hand_list_state.select(Some((selected + 1) % 5))
+                    }
+                },
+                KeyCode::Up => {
+                    if let Some(selected) = hand_list_state.selected() {
+                        if selected > 0 {
+                            hand_list_state.select(Some(selected - 1));
+                        } else {
+                            hand_list_state.select(Some(4));
+                        }
+                    }
+                },
                 _ => {},
             }
             Event::Tick => {},
@@ -188,4 +216,61 @@ fn render_home<'a>() -> Paragraph<'a> {
     );
 
     home
+}
+
+fn render_poker<'a>(hand_list_state: &ListState) -> (Paragraph<'a>, List<'a>) {
+    // Score block
+    let score = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Score")]),
+        Spans::from(vec![Span::styled(
+            "0",
+            Style::default().fg(Color::Red),
+        )]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::White))
+        .border_type(BorderType::Plain),
+    );
+
+    // Game block
+    let game = Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::White))
+        .border_type(BorderType::Plain);
+
+    // Replace harcoded cards with cards returned from
+    // deal() in lib.rs
+    let hand = vec!["A of Spades", "Q or hearts", "3 of Clubs",
+                    "9 of Diamonds", "2 of Clubs"];
+
+    let cards: Vec<_> = hand
+        .iter()
+        .map(|card| {
+            ListItem::new(Spans::from(vec![Span::styled(
+                        card.clone(),
+                        Style::default(),
+            )]))
+        })
+        .collect();
+
+    let selected_card = hand
+        .get(
+            hand_list_state
+                .selected()
+                .expect("always a card selected"),
+        )
+        .expect("exists")
+        .clone();
+
+    let list = List::new(cards).block(game).highlight_style(
+        Style::default()
+            .bg(Color::Yellow)
+            .fg(Color::Black)
+            .add_modifier(Modifier::BOLD),
+    );
+
+    (score, list)
 }
