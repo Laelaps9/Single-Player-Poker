@@ -1,13 +1,10 @@
 use single_player_poker as poker;
+use std::process;
 
 fn main() {
-    let mut deck = poker::generate_deck();
-    let cards = poker::deal(&mut deck);
+    if let Err(e) = poker::run() {
+        println!("Application error: {}", e);
 
-    println!("Your cards:");
-    for (i, card) in cards.iter().enumerate() {
-        println!("{}) {}", i, card);
+        process::exit(1);
     }
-
-
 }

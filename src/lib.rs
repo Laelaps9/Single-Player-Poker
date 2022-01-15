@@ -1,3 +1,4 @@
+use std::error::Error;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::fmt;
@@ -44,9 +45,6 @@ impl fmt::Display for Card {
     }
 }
 
-pub fn generate_deck() -> Vec<u8> {
-    return (1..53).collect::<Vec<u8>>();
-}
 
 pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
     let mut cards: Vec<Card> = vec![];
@@ -61,6 +59,23 @@ pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
     }
 
     return cards;
+}
+
+pub fn generate_deck() -> Vec<u8> {
+    return (1..53).collect::<Vec<u8>>();
+}
+
+
+pub fn run() -> Result<(), Box<dyn Error>> {
+    let mut deck = generate_deck();
+    let cards = deal(&mut deck);
+
+    println!("Your cards:");
+    for (i, card) in cards.iter().enumerate() {
+        println!("{}) {}", i, card);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
