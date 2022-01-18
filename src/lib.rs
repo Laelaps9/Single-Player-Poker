@@ -66,19 +66,18 @@ impl fmt::Display for Card {
 }
 
 pub fn change_cards(deck: &mut Vec<u8>,
-    cards: &mut Vec<Card>,
-    to_change: Vec<char>) -> Result<(), String> {
-    let mut discarded: Vec<Card> = vec![];
+    hand: &mut Vec<Card>,
+    to_change: &Vec<usize>) -> Vec<u8> {
+    let mut discarded: Vec<u8> = vec![];
 
-    // Cards are removed now
-
+    // Removed cards are sent to the discarded pile
+    // New cards are popped from the deck
     for i in to_change {
-        discarded.push(cards.remove((i.to_digit(10).unwrap() - 1).try_into().unwrap()))
+        discarded.push(hand.remove(*i).value);
+        hand.insert(*i, Card::new(deck.pop().unwrap()));
     }
 
-    println!("{:?}", cards);
-
-    return Ok(());
+    return discarded;
 }
 
 pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
@@ -89,7 +88,6 @@ pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
 
     for _i in 0..5 {
         let card_val = deck.pop().unwrap();
-
         cards.push(Card::new(card_val));
     }
 
@@ -141,7 +139,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Cards to change {:?}", chars);
 
-    change_cards(&mut deck, &mut cards, chars);
+    //change_cards(&mut deck, &mut cards, chars);
 
     Ok(())
 }

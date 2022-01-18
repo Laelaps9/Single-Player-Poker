@@ -83,6 +83,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut deck: Vec<u8> = poker::generate_deck();
     let mut hand: Vec<poker::Card> = vec![];
     let mut to_change: Vec<usize> = vec![];
+    let mut discarded: Vec<u8> = vec![];
     
     // Stateful list where cards will be stored
     let mut hand_list_state = ListState::default();
@@ -191,6 +192,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     if !game_active {
                         game_active = true;
                         hand = poker::deal(&mut deck)
+                    } else {
+                        if to_change.len() > 0 {
+                            discarded = poker::change_cards(&mut deck, &mut hand, &to_change);
+                            to_change.clear();
+                        }
                     }
                 },
                 KeyCode::Char(' ') => {
