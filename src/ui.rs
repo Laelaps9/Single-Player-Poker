@@ -2,6 +2,7 @@ use crossterm::{
     event::{self, Event as CEvent, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
+use single_player_poker as poker;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -23,21 +24,19 @@ enum Event<I> {
     Tick,
 }
 
-#[derive(Copy, Clone, Debug)]
-enum MenuItem {
-    Home,
-    Poker,
-    Tutorial,
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum Screen {
+    Welcome,
+    Game,
 }
 
 // Allows for use in the Tabs component 
 // to highlight current tab
-impl From<MenuItem> for usize {
-    fn from(input: MenuItem) -> usize {
+impl From<Screen> for usize {
+    fn from(input: Screen) -> usize {
         match input {
-            MenuItem::Home => 0,
-            MenuItem::Poker => 1,
-            MenuItem::Tutorial => 2,
+            Screen::Welcome => 0,
+            Screen::Game => 1,
         }
     }
 }
@@ -79,8 +78,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear()?;
 
     let menu_titles = vec!["Home", "Poker", "Tutorial"];
-    let mut active_menu_item = MenuItem::Home;
-
+    let mut active_menu_item = Screen::Welcome;
+    let mut game_active = false;
+    let mut deck: Vec<u8> = poker::generate_deck();
+    let mut hand: Vec<poker::Card> = vec![];
+    let mut to_change: Vec<usize> = vec![];
+    
     // Stateful list where cards will be stored
     let mut hand_list_state = ListState::default();
     hand_list_state.select(Some(0));
@@ -115,6 +118,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                         .border_type(BorderType::Plain),
                 );
 
+            // Tabs no longer needed
             let menu = menu_titles
                 .iter()
                 .map(|t| {
@@ -140,20 +144,23 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 
             rect.render_widget(tabs, chunks[0]);
 
-            match active_menu_item {
-                MenuItem::Home => rect.render_widget(render_home(), chunks[1]),
-                MenuItem::Poker => {
-                    let poker_chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints(
-                            [Constraint::Percentage(10), Constraint::Percentage(90)].as_ref(),
-                        )
-                        .split(chunks[1]);
-                    let (score, game) = render_poker(&hand_list_state);
-                    rect.render_widget(score, poker_chunks[0]);
-                    rect.render_stateful_widget(game, poker_chunks[1], &mut hand_list_state);
-                },
-                MenuItem::Tutorial => {},
+            if game_active {
+                let poker_chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(
+                        [Constraint::Percentage(20), Constraint::Percentage(90)].as_ref(),
+                    )
+                    .split(chunks[1]);
+                let (score, game) = render_game(&hand_list_state, &mut hand, &to_change);
+                rect.render_widget(score, poker_chunks[0]);
+                rect.render_stateful_widget(game, poker_chunks[1], &mut hand_list_state);
+
+            } else {
+                match active_menu_item {
+                    Screen::Welcome => {
+                        rect.render_widget(render_welcome(), chunks[1]);
+                    }
+                    Screen::Game => {},                }
             }
 
             rect.render_widget(footer, chunks[2]);
@@ -166,9 +173,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     terminal.show_cursor()?;
                     break;
                 }
-                KeyCode::Char('h') => active_menu_item = MenuItem::Home,
-                KeyCode::Char('p') => active_menu_item = MenuItem::Poker,
-                KeyCode::Char('t') => active_menu_item = MenuItem::Tutorial,
                 KeyCode::Down => {
                     if let Some(selected) = hand_list_state.selected() {
                         hand_list_state.select(Some((selected + 1) % 5))
@@ -183,6 +187,26 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 },
+                KeyCode::Enter => {
+                    if !game_active {
+                        game_active = true;
+                        hand = poker::deal(&mut deck)
+                    }
+                },
+                KeyCode::Char(' ') => {
+                    if game_active {
+                        let selection = hand_list_state.selected().unwrap();
+
+                        if to_change.contains(&selection) {
+                            to_change.retain(|i| i != &selection);
+                        } else {
+                            if to_change.len() == 3 {
+                                to_change.pop();
+                            }
+                            to_change.push(selection);
+                        }
+                    }
+                }
                 _ => {},
             }
             Event::Tick => {},
@@ -192,34 +216,24 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn render_home<'a>() -> Paragraph<'a> {
-    let home = Paragraph::new(vec![
-        Spans::from(vec![Span::raw("")]),
+fn render_welcome<'a>() -> Paragraph<'a> {
+    let welcome = Paragraph::new(vec![
         Spans::from(vec![Span::raw("Welcome")]),
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("to")]),
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::styled(
-            "Single Player Poker",
-            Style::default().fg(Color::LightBlue),
-        )]),
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("Press 'h' for help")]),
     ])
     .alignment(Alignment::Center)
     .block(
         Block::default()
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
-            .title("Game")
             .border_type(BorderType::Plain),
     );
 
-    home
+    welcome
 }
 
-fn render_poker<'a>(hand_list_state: &ListState) -> (Paragraph<'a>, List<'a>) {
-    // Score block
+fn render_game<'a>(hand_list_state: &ListState,
+    hand: &mut Vec<poker::Card>,
+    to_change: &Vec<usize>) -> (Paragraph<'a>, List<'a>) {
     let score = Paragraph::new(vec![
         Spans::from(vec![Span::raw("Score")]),
         Spans::from(vec![Span::styled(
@@ -241,12 +255,16 @@ fn render_poker<'a>(hand_list_state: &ListState) -> (Paragraph<'a>, List<'a>) {
         .style(Style::default().fg(Color::White))
         .border_type(BorderType::Plain);
 
-    // Replace harcoded cards with cards returned from
-    // deal() in lib.rs
-    let hand = vec!["A of Spades", "Q or hearts", "3 of Clubs",
-                    "9 of Diamonds", "2 of Clubs"];
+    let mut strings: Vec<String> = vec![];
+    for i in 0..5 {
+        let mut string = hand[i].get_card();
+        if to_change.contains(&i) {
+            string.push('*');
+        }
+        strings.push(string);
+    }
 
-    let cards: Vec<_> = hand
+    let cards: Vec<_> = strings
         .iter()
         .map(|card| {
             ListItem::new(Spans::from(vec![Span::styled(

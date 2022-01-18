@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Card {
     pub suit: String,
     pub value: u8,
@@ -24,8 +24,27 @@ impl Card {
 
         Card { suit, value }
     }
+
+    pub fn get_card(&self) -> String {
+        let tmp = self.value % 13;
+        let mut _r = String::new();
+        let rank = match tmp {
+            1 => "A",
+            2..=10 => {
+                _r = tmp.to_string();
+                _r.as_str()
+            },
+            11 => "J",
+            12 => "Q",
+            0 => "K",
+            _ => panic!("Error"),
+        };
+
+        return format!("{} of {}", rank, self.suit);
+    }
 }
 
+// Delete Display impl if not needed
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tmp = self.value % 13;
