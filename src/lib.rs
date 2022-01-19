@@ -1,5 +1,6 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::io;
@@ -33,7 +34,7 @@ impl Card {
             2..=10 => {
                 _r = tmp.to_string();
                 _r.as_str()
-            },
+            }
             11 => "J",
             12 => "Q",
             0 => "K",
@@ -65,9 +66,7 @@ impl fmt::Display for Card {
     }
 }
 
-pub fn change_cards(deck: &mut Vec<u8>,
-    hand: &mut Vec<Card>,
-    to_change: &Vec<usize>) -> Vec<u8> {
+pub fn change_cards(deck: &mut Vec<u8>, hand: &mut Vec<Card>, to_change: &Vec<usize>) -> Vec<u8> {
     let mut discarded: Vec<u8> = vec![];
 
     // Removed cards are sent to the discarded pile
@@ -78,6 +77,47 @@ pub fn change_cards(deck: &mut Vec<u8>,
     }
 
     return discarded;
+}
+
+pub fn check_hand(hand: &Vec<Card>) -> i32 {
+    //let mut suits = HashMap::new();
+    let mut ranks = HashMap::new();
+
+    for card in hand {
+        //let counter = groups.entry(&card.suit).or_insert(0);
+        let counter = ranks.entry(&card.value % 13).or_insert(0);
+        *counter += 1;
+    }
+
+    let values: Vec<i32> = ranks.into_values().collect();
+
+    // Four of a kind
+    if values.contains(&4) {
+        return 20;
+    }
+
+    // Straight
+
+    // Three of a kind
+    if values.contains(&3) {
+        return 5;
+    }
+
+    let mut count_pairs = 0;
+    for v in values {
+        if v == 2 {
+            count_pairs += 1;
+        }
+    }
+
+    // Two pair
+    let score = match count_pairs {
+        1 => 1,
+        2 => 3,
+        _ => 0,
+    };
+
+    return score;
 }
 
 pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
@@ -97,53 +137,6 @@ pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
 pub fn generate_deck() -> Vec<u8> {
     return (1..53).collect::<Vec<u8>>();
 }
-
-pub fn run() -> Result<(), Box<dyn Error>> {
-    let mut deck = generate_deck();
-    let mut cards = deal(&mut deck);
-    let mut changed: Vec<Card> = vec![];
-
-    println!("\nYour cards:");
-    for (i, card) in cards.iter().enumerate() {
-        println!("{}) {}", i + 1, card);
-    }
-
-    println!("\nType the listed number of the cards you want \
-                to change (e.g. 1 3 4).\
-                \nYou can change up to 3 cards.
-                ");
-    println!("Leave empty and press enter to change none.");
-
-    let mut chars: Vec<char> = vec![];
-    
-    loop {
-        let mut to_change = String::new();
-        io::stdin()
-        .read_line(&mut to_change)
-        .expect("Failed to read input");
-
-        chars = to_change.chars().collect();
-        chars.retain(|c| c.is_numeric());
-
-        if chars.len() <= 3 {
-            break;
-        }
-
-        println!("You can change a maximum of 3 cards");
-        println!("{}", to_change);
-        chars.clear();
-        println!("{:?}", chars);
-
-    }
-
-
-    println!("Cards to change {:?}", chars);
-
-    //change_cards(&mut deck, &mut cards, chars);
-
-    Ok(())
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -225,5 +218,53 @@ mod tests {
                 value: 52,
             }
         );
+    }
+
+    #[test]
+    fn check_pair() {
+        let ace_one = Card::new(1); // Ace of spades
+        let ace_two = Card::new(14); // Ace of hearts
+        let card3 = Card::new(4);
+        let card4 = Card::new(18);
+        let card5 = Card::new(45);
+        let hand = vec![ace_one, card3, card4, ace_two, card5];
+
+        assert_eq!(1, check_hand(&hand));
+    }
+
+    #[test]
+    fn check_two_pair() {
+        let k_one = Card::new(13); // K of spades
+        let k_two = Card::new(26); // K of hearts
+        let q_one = Card::new(51); // Q of clubs
+        let q_two = Card::new(25); // Q of hearts
+        let card5 = Card::new(2);
+        let hand = vec![k_one, q_one, q_two, k_two, card5];
+
+        assert_eq!(3, check_hand(&hand));
+    }
+
+    #[test]
+    fn check_three_of_a_kind() {
+        let five_one = Card::new(5); // 5 of spades
+        let five_two = Card::new(31); // 5 of diamonds
+        let five_three = Card::new(44); // 5 of clubs
+        let card4 = Card::new(25);
+        let card5 = Card::new(47);
+        let hand = vec![five_one, card4, five_two, card5, five_three];
+
+        assert_eq!(5, check_hand(&hand));
+    }
+
+    #[test]
+    fn check_four_of_a_kind() {
+        let j_one = Card::new(11); // J of spades
+        let j_two = Card::new(24); // J of hears
+        let j_three = Card::new(37); // J of diamonds
+        let j_four = Card::new(50); // J of clubs
+        let card5 = Card::new(4);
+        let hand = vec![j_one, j_two, j_three, card5, j_four];
+
+        assert_eq!(20, check_hand(&hand));
     }
 }

@@ -84,6 +84,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut hand: Vec<poker::Card> = vec![];
     let mut to_change: Vec<usize> = vec![];
     let mut discarded: Vec<u8> = vec![];
+    let mut score = 0;
     
     // Stateful list where cards will be stored
     let mut hand_list_state = ListState::default();
@@ -152,7 +153,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                         [Constraint::Percentage(20), Constraint::Percentage(90)].as_ref(),
                     )
                     .split(chunks[1]);
-                let (score, game) = render_game(&hand_list_state, &mut hand, &to_change);
+                let (score, game) = render_game(&hand_list_state, &mut hand, &to_change, &score);
                 rect.render_widget(score, poker_chunks[0]);
                 rect.render_stateful_widget(game, poker_chunks[1], &mut hand_list_state);
 
@@ -197,6 +198,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                             discarded = poker::change_cards(&mut deck, &mut hand, &to_change);
                             to_change.clear();
                         }
+                        score += poker::check_hand(&hand);
                     }
                 },
                 KeyCode::Char(' ') => {
@@ -239,11 +241,12 @@ fn render_welcome<'a>() -> Paragraph<'a> {
 
 fn render_game<'a>(hand_list_state: &ListState,
     hand: &mut Vec<poker::Card>,
-    to_change: &Vec<usize>) -> (Paragraph<'a>, List<'a>) {
+    to_change: &Vec<usize>,
+    score: &i32) -> (Paragraph<'a>, List<'a>) {
     let score = Paragraph::new(vec![
         Spans::from(vec![Span::raw("Score")]),
         Spans::from(vec![Span::styled(
-            "0",
+            score.to_string(),
             Style::default().fg(Color::Red),
         )]),
     ])
