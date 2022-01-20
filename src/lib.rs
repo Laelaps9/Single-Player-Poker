@@ -1,9 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
-use std::io;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Card {

@@ -12,7 +12,7 @@ use tui::{
     style::{Color, Modifier, Style},
     text::{Span, Spans},
     widgets::{
-        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, Wrap
+        Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap
     },
     Terminal,
 };
