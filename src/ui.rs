@@ -30,17 +30,6 @@ enum Screen {
     Game,
 }
 
-// Allows for use in the Tabs component 
-// to highlight current tab
-impl From<Screen> for usize {
-    fn from(input: Screen) -> usize {
-        match input {
-            Screen::Welcome => 0,
-            Screen::Game => 1,
-        }
-    }
-}
-
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     // stdin won't be printed and input isn't buffered
     enable_raw_mode().expect("can run in raw mode");
@@ -129,8 +118,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                             )
                             .split(chunks[1]);
                         let game = render_game(&hand_list_state, &mut hand, &to_change);
-                        //rect.render_widget(score, poker_chunks[0]);
+                        let ascii_card = render_ascii_card(
+                            &hand[hand_list_state.selected().unwrap()].rank,
+                            &hand[hand_list_state.selected().unwrap()].suit,
+                            );
                         rect.render_stateful_widget(game, poker_chunks[0], &mut hand_list_state);
+                        rect.render_widget(ascii_card, poker_chunks[1]);
                     } else {
                     }
 
@@ -199,7 +192,55 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn render_ascii_card<'a>(){
+fn render_ascii_card<'a>(rank: &String, suit: &String) -> Paragraph<'a> {
+    let suit_symbol = match &suit[..] {
+        "Spades" => "♠",
+        "Hearts" => "♥",
+        "Diamonds" => "♦",
+        "Clubs" => "♣",
+        _ => panic!("Error"),
+    };
+
+    let top;
+    let mid;
+    let bot;
+
+    if rank == "10" {
+        top = format!("│{rank}               │");
+        bot = format!("│               {rank}│");
+    } else {
+        top = format!("│{rank}                │");
+        bot = format!("│                {rank}│");
+    }
+
+    mid = format!("│        {suit_symbol}        │");
+
+    let card = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("╭─────────────────╮")]),
+        Spans::from(vec![Span::raw(top)]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw(mid)]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw(bot)]),
+        Spans::from(vec![Span::raw("╰─────────────────╯")]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .border_type(BorderType::Plain)
+    );
+
+    card
 }
 
 fn render_game<'a>(hand_list_state: &ListState,
@@ -230,15 +271,6 @@ fn render_game<'a>(hand_list_state: &ListState,
             )]))
         })
         .collect();
-
-    let selected_card = hand
-        .get(
-            hand_list_state
-                .selected()
-                .expect("always a card selected"),
-        )
-        .expect("exists")
-        .clone();
 
     let list = List::new(cards).block(game).highlight_style(
         Style::default()
@@ -286,7 +318,7 @@ fn render_score<'a>(s: i32) -> Paragraph<'a> {
         Block::default()
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::White))
-        .border_type(BorderType::Plain),
+        .border_type(BorderType::Rounded),
     );
 
     score
@@ -295,6 +327,38 @@ fn render_score<'a>(s: i32) -> Paragraph<'a> {
 fn render_welcome<'a>() -> Paragraph<'a> {
     let welcome = Paragraph::new(vec![
         Spans::from(vec![Span::raw("Welcome")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("to")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::styled(
+            "Single Player Poker",
+            Style::default().fg(Color::Cyan),
+        )]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("╭─────────────────╮")]),
+        Spans::from(vec![Span::raw("│A                │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│        ♠        │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                 │")]),
+        Spans::from(vec![Span::raw("│                A│")]),
+        Spans::from(vec![Span::raw("╰─────────────────╯")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::styled(
+            "♠ Press Enter to play ♠",
+            Style::default()
+                .bg(Color::LightGreen)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD)
+        )]),
     ])
     .alignment(Alignment::Center)
     .block(
