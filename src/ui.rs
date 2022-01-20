@@ -73,6 +73,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut to_change: Vec<usize> = vec![];
     let mut discarded: Vec<u8> = vec![];
     let mut score = 0;
+    let mut points = 0;
+    let _poker_hand: &str;
     
     // Stateful list where cards will be stored
     let mut hand_list_state = ListState::default();
@@ -89,10 +91,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 Screen::Game => {
                     vec![
                         Constraint::Length(4),
-                        Constraint::Min(2),
+                        Constraint::Min(4),
+                        Constraint::Length(5),
                         Constraint::Length(9),
                     ]
-
                 }
             };
 
@@ -110,29 +112,29 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     let help = render_help();
                     let score = render_score(score);
 
-                    if game_active {
-                        let poker_chunks = Layout::default()
-                            .direction(Direction::Horizontal)
-                            .constraints(
-                                [Constraint::Percentage(40), Constraint::Percentage(60)].as_ref(),
-                            )
-                            .split(chunks[1]);
-                        let game = render_game(&hand_list_state, &mut hand, &to_change);
-                        let ascii_card = render_ascii_card(
-                            &hand[hand_list_state.selected().unwrap()].rank,
-                            &hand[hand_list_state.selected().unwrap()].suit,
-                            );
-                        rect.render_stateful_widget(game, poker_chunks[0], &mut hand_list_state);
-                        rect.render_widget(ascii_card, poker_chunks[1]);
-                    } else {
+                    let poker_chunks = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints(
+                            [Constraint::Percentage(40), Constraint::Percentage(60)].as_ref(),
+                        )
+                        .split(chunks[1]);
+                    let game = render_game(&mut hand, &to_change);
+                    let ascii_card = render_ascii_card(
+                        &hand[hand_list_state.selected().unwrap()].rank,
+                        &hand[hand_list_state.selected().unwrap()].suit,
+                        );
+                    rect.render_stateful_widget(game, poker_chunks[0], &mut hand_list_state);
+                    rect.render_widget(ascii_card, poker_chunks[1]);
+
+                    if !game_active {
+                        let (message, _poker_hand) = render_message(&points);
+                        rect.render_widget(message, chunks[2]);
                     }
 
                     rect.render_widget(score, chunks[0]);
-                    rect.render_widget(help, chunks[2]);
+                    rect.render_widget(help, chunks[3]);
                 },
             }
-            
-
         })?;
 
         match rx.recv()? {
@@ -166,7 +168,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                             discarded = poker::change_cards(&mut deck, &mut hand, &to_change);
                             to_change.clear();
                         }
-                        score += poker::check_hand(&hand);
+                        points = poker::check_hand(&hand);
+                        score += points;
+                        game_active = false;
+                        poker::reset_deck(&mut deck, &mut hand, &mut discarded);
+
                     }
                 },
                 KeyCode::Char(' ') => {
@@ -243,8 +249,7 @@ fn render_ascii_card<'a>(rank: &String, suit: &String) -> Paragraph<'a> {
     card
 }
 
-fn render_game<'a>(hand_list_state: &ListState,
-    hand: &mut Vec<poker::Card>,
+fn render_game<'a>(hand: &mut Vec<poker::Card>,
     to_change: &Vec<usize>) -> List<'a> {
 
     // Game block
@@ -303,6 +308,40 @@ fn render_help<'a>() -> Paragraph<'a> {
     );
 
     help
+}
+
+fn render_message<'a>(points: &i32) -> (Paragraph<'a>, &str) {
+    let poker_hand = match points {
+        1 => "Pair!",
+        3 => "Two pair!",
+        5 => "Three of a kind!",
+        10 => "Straight!",
+        20 => "Four of a kind!",
+        _ => "Nothing!"
+    };
+
+    let points_added = format!("+{}", points.to_string());
+
+    let message = Paragraph::new(vec![
+        Spans::from(vec![Span::styled(
+            poker_hand,
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD)
+        )]),
+        Spans::from(vec![Span::styled(
+            points_added,
+            Style::default().fg(Color::Red)
+        )]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("Press enter to be dealt again")]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+    );
+
+    (message, poker_hand)
 }
 
 fn render_score<'a>(s: i32) -> Paragraph<'a> {
@@ -369,4 +408,45 @@ fn render_welcome<'a>() -> Paragraph<'a> {
     );
 
     welcome
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_nothing() {
+        let (_par, poker_hand) = render_message(&0);
+        assert_eq!("Nothing!", poker_hand);
+    }
+
+    #[test]
+    fn display_pair() {
+        let (_par, poker_hand) = render_message(&1);
+        assert_eq!("Pair!", poker_hand);
+    }
+
+    #[test]
+    fn display_two_pair() {
+        let (_par, poker_hand) = render_message(&3);
+        assert_eq!("Two pair!", poker_hand);
+    }
+
+    #[test]
+    fn display_three_of_a_kind() {
+        let (_par, poker_hand) = render_message(&5);
+        assert_eq!("Three of a kind!", poker_hand);
+    }
+
+    #[test]
+    fn display_straight() {
+        let (_par, poker_hand) = render_message(&10);
+        assert_eq!("Straight!", poker_hand);
+    }
+
+    #[test]
+    fn display_four_of_a_kind() {
+        let (_par, poker_hand) = render_message(&20);
+        assert_eq!("Four of a kind!", poker_hand);
+    }
 }
