@@ -199,6 +199,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn render_ascii_card<'a>(){
+}
 
 fn render_game<'a>(hand_list_state: &ListState,
     hand: &mut Vec<poker::Card>,

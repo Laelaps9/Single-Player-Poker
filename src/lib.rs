@@ -8,6 +8,7 @@ use std::io;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Card {
     pub suit: String,
+    pub rank: String,
     pub value: u8,
 }
 
@@ -23,25 +24,21 @@ impl Card {
             _ => panic!("Error"),
         };
 
-        Card { suit, value }
-    }
-
-    pub fn get_card(&self) -> String {
-        let tmp = self.value % 13;
-        let mut _r = String::new();
+        let tmp: u8 = value % 13;
         let rank = match tmp {
-            1 => "A",
-            2..=10 => {
-                _r = tmp.to_string();
-                _r.as_str()
-            }
-            11 => "J",
-            12 => "Q",
-            0 => "K",
+            1 => "A".to_string(),
+            2..=10 => tmp.to_string(),
+            11 => "J".to_string(),
+            12 => "Q".to_string(),
+            0 => "K".to_string(),
             _ => panic!("Error"),
         };
 
-        return format!("{} of {}", rank, self.suit);
+        Card { suit, rank, value }
+    }
+
+    pub fn get_card(&self) -> String {
+        return format!("{} of {}", self.rank, self.suit);
     }
 }
 
