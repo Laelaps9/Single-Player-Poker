@@ -12,7 +12,7 @@ use tui::{
     style::{Color, Modifier, Style},
     text::{Span, Spans},
     widgets::{
-        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs,
+        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, Wrap
     },
     Terminal,
 };
@@ -77,8 +77,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let menu_titles = vec!["Home", "Poker", "Tutorial"];
-    let mut active_menu_item = Screen::Welcome;
+    let mut active_screen = Screen::Welcome;
     let mut game_active = false;
     let mut deck: Vec<u8> = poker::generate_deck();
     let mut hand: Vec<poker::Card> = vec![];
@@ -96,76 +95,51 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // header, body, and footer
         terminal.draw(|rect| {
             let size = rect.size();
+            let constraints = match active_screen {
+                Screen::Welcome => vec![Constraint::Min(20)],
+                Screen::Game => {
+                    vec![
+                        Constraint::Length(4),
+                        Constraint::Min(2),
+                        Constraint::Length(9),
+                    ]
+
+                }
+            };
+
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(2)
-                .constraints(
-                    [
-                        Constraint::Length(3),
-                        Constraint::Min(2),
-                        Constraint::Length(3),
-                    ]
-                    .as_ref(),
-                )
+                .constraints(constraints.as_ref())
                 .split(size);
 
-            let footer = Paragraph::new("Single Player Poker")
-                .style(Style::default().fg(Color::LightCyan))
-                .alignment(Alignment::Center)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .style(Style::default().fg(Color::White))
-                        .title("Help")
-                        .border_type(BorderType::Plain),
-                );
+            match active_screen {
+                Screen::Welcome => {
+                    rect.render_widget(render_welcome(), chunks[0]);
+                },
+                Screen::Game => {
+                    let help = render_help();
+                    let score = render_score(score);
 
-            // Tabs no longer needed
-            let menu = menu_titles
-                .iter()
-                .map(|t| {
-                    let (first, rest) = t.split_at(1);
-                    Spans::from(vec![
-                        Span::styled(
-                            first,
-                            Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::UNDERLINED),
-                        ),
-                        Span::styled(rest, Style::default().fg(Color::White)),
-                    ])
-                })
-                .collect();
-
-            let tabs = Tabs::new(menu)
-                .select(active_menu_item.into())
-                .block(Block::default().title("Menu").borders(Borders::ALL))
-                .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().fg(Color::Yellow))
-                .divider(Span::raw("|"));
-
-            rect.render_widget(tabs, chunks[0]);
-
-            if game_active {
-                let poker_chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(
-                        [Constraint::Percentage(20), Constraint::Percentage(90)].as_ref(),
-                    )
-                    .split(chunks[1]);
-                let (score, game) = render_game(&hand_list_state, &mut hand, &to_change, &score);
-                rect.render_widget(score, poker_chunks[0]);
-                rect.render_stateful_widget(game, poker_chunks[1], &mut hand_list_state);
-
-            } else {
-                match active_menu_item {
-                    Screen::Welcome => {
-                        rect.render_widget(render_welcome(), chunks[1]);
+                    if game_active {
+                        let poker_chunks = Layout::default()
+                            .direction(Direction::Horizontal)
+                            .constraints(
+                                [Constraint::Percentage(40), Constraint::Percentage(60)].as_ref(),
+                            )
+                            .split(chunks[1]);
+                        let game = render_game(&hand_list_state, &mut hand, &to_change);
+                        //rect.render_widget(score, poker_chunks[0]);
+                        rect.render_stateful_widget(game, poker_chunks[0], &mut hand_list_state);
+                    } else {
                     }
-                    Screen::Game => {},                }
-            }
 
-            rect.render_widget(footer, chunks[2]);
+                    rect.render_widget(score, chunks[0]);
+                    rect.render_widget(help, chunks[2]);
+                },
+            }
+            
+
         })?;
 
         match rx.recv()? {
@@ -191,6 +165,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 KeyCode::Enter => {
                     if !game_active {
+                        active_screen = Screen::Game;
                         game_active = true;
                         hand = poker::deal(&mut deck)
                     } else {
@@ -224,39 +199,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn render_welcome<'a>() -> Paragraph<'a> {
-    let welcome = Paragraph::new(vec![
-        Spans::from(vec![Span::raw("Welcome")]),
-    ])
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
-            .border_type(BorderType::Plain),
-    );
-
-    welcome
-}
 
 fn render_game<'a>(hand_list_state: &ListState,
     hand: &mut Vec<poker::Card>,
-    to_change: &Vec<usize>,
-    score: &i32) -> (Paragraph<'a>, List<'a>) {
-    let score = Paragraph::new(vec![
-        Spans::from(vec![Span::raw("Score")]),
-        Spans::from(vec![Span::styled(
-            score.to_string(),
-            Style::default().fg(Color::Red),
-        )]),
-    ])
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-        .borders(Borders::ALL)
-        .style(Style::default().fg(Color::White))
-        .border_type(BorderType::Plain),
-    );
+    to_change: &Vec<usize>) -> List<'a> {
 
     // Game block
     let game = Block::default()
@@ -299,5 +245,62 @@ fn render_game<'a>(hand_list_state: &ListState,
             .add_modifier(Modifier::BOLD),
     );
 
-    (score, list)
+    list
+}
+
+fn render_help<'a>() -> Paragraph<'a> {
+    let help = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("You are dealt 5 cards.")]),
+        Spans::from(vec![Span::raw("Use the up/down arrow keys to move between cards")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("Up to 3 cards can be changed.")]),
+        Spans::from(vec![Span::raw("Press 'space' to select/deselct a card.")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("When done, press enter to get your new cards and score")]),
+    ])
+    .alignment(Alignment::Left)
+    .wrap(Wrap { trim: true })
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .title("Help")
+            .border_type(BorderType::Rounded),
+    );
+
+    help
+}
+
+fn render_score<'a>(s: i32) -> Paragraph<'a> {
+    let score = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Score")]),
+        Spans::from(vec![Span::styled(
+            s.to_string(),
+            Style::default().fg(Color::Red),
+        )]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::White))
+        .border_type(BorderType::Plain),
+    );
+
+    score
+}
+
+fn render_welcome<'a>() -> Paragraph<'a> {
+    let welcome = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Welcome")]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .border_type(BorderType::Plain),
+    );
+
+    welcome
 }
