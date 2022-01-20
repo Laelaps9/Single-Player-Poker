@@ -74,6 +74,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut discarded: Vec<u8> = vec![];
     let mut score = 0;
     let mut points = 0;
+    let mut help_toggle = false;
     let _poker_hand: &str;
     
     // Stateful list where cards will be stored
@@ -86,6 +87,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // header, body, and footer
         terminal.draw(|rect| {
             let size = rect.size();
+            let help_size = if !help_toggle { 5 } else { 9 };
             let constraints = match active_screen {
                 Screen::Welcome => vec![Constraint::Min(20)],
                 Screen::Game => {
@@ -93,7 +95,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                         Constraint::Length(4),
                         Constraint::Min(4),
                         Constraint::Length(5),
-                        Constraint::Length(9),
+                        Constraint::Length(help_size),
                     ]
                 }
             };
@@ -109,7 +111,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     rect.render_widget(render_welcome(), chunks[0]);
                 },
                 Screen::Game => {
-                    let help = render_help();
+                    let help = render_help(&help_toggle);
                     let score = render_score(score);
 
                     let poker_chunks = Layout::default()
@@ -188,6 +190,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                             to_change.push(selection);
                         }
                     }
+                },
+                KeyCode::Char('h') => {
+                    help_toggle = !help_toggle;
                 }
                 _ => {},
             }
@@ -287,15 +292,36 @@ fn render_game<'a>(hand: &mut Vec<poker::Card>,
     list
 }
 
-fn render_help<'a>() -> Paragraph<'a> {
-    let help = Paragraph::new(vec![
-        Spans::from(vec![Span::raw("You are dealt 5 cards.")]),
-        Spans::from(vec![Span::raw("Use the up/down arrow keys to move between cards")]),
+fn render_help<'a>(toggle: &bool) -> Paragraph<'a> {
+    let help;
+
+    if *toggle {
+        help = Paragraph::new(vec![
+            Spans::from(vec![Span::raw("You are dealt 5 cards.")]),
+            Spans::from(vec![Span::raw("Use the up/down arrow keys to move between cards")]),
+            Spans::from(vec![Span::raw("")]),
+            Spans::from(vec![Span::raw("Up to 3 cards can be changed.")]),
+            Spans::from(vec![Span::raw("Press 'space' to select/deselct a card.")]),
+            Spans::from(vec![Span::raw("")]),
+            Spans::from(vec![Span::raw("When done, press enter to get your new cards and score")]),
+        ])
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::White))
+                .title("How to play")
+                .border_type(BorderType::Rounded),
+        );
+        
+        return help;
+    }
+
+    help = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Press 'h' to toggle instructions on how to play.")]),
         Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("Up to 3 cards can be changed.")]),
-        Spans::from(vec![Span::raw("Press 'space' to select/deselct a card.")]),
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("When done, press enter to get your new cards and score")]),
+        Spans::from(vec![Span::raw("Press 'q' to quit.")]),
     ])
     .alignment(Alignment::Left)
     .wrap(Wrap { trim: true })
