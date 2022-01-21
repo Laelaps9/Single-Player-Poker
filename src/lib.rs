@@ -83,29 +83,46 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
         rank_values.push(rank.1);
     }
 
-    // Four of a kind
+    // Four of a kind -> +20 points
     if rank_values.contains(&4) {
         return 20;
     }
 
+    // Full house
+
+    // Flush
+    let suit_keys: Vec<&String> = suits.into_keys().collect();
+    let flush_found = suit_keys.len() == 1;
+
     // Straight
+    let mut straight_found = false;
     if rank_keys.len() == 5 {
         rank_keys.sort();
-        let mut str_found = straight(&rank_keys[..]);
+        straight_found = straight(&rank_keys[..]);
 
         // If not found and there's an ace in the hand
         // check again counting the ace as its high value
-        if !str_found && rank_keys.contains(&1) {
+        if !straight_found && rank_keys.contains(&1) {
             rank_keys.push(14);
-            str_found = straight(&rank_keys[1..]);
-        }
-
-        if str_found {
-            return 10;
+            straight_found = straight(&rank_keys[1..]);
         }
     }
 
-    // Three of a kind
+    // Match to find straight flush, just flush or just straight
+    match (flush_found, straight_found) {
+        (false, false) => {},
+        (true, false) => return 15, // Flush -> +15 points
+        (false, true) => return 10, // Straight -> +10 points
+        (true, true) => {
+            if rank_keys[rank_keys.len() - 1] == 14 {
+                return 40; // Royal Flush -> +40 points
+            }
+
+            return 30; // Straight Flush -> +30 points
+        }
+    }
+
+    // Three of a kind -> +5 points
     if rank_values.contains(&3) {
         return 5;
     }
@@ -117,10 +134,10 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
         }
     }
 
-    // Two pair
+    // Pairs
     let score = match count_pairs {
-        1 => 1,
-        2 => 3,
+        1 => 1, // -> Pair -> +1 point
+        2 => 3, // -> Two pair -> +3 points
         _ => 0,
     };
 
@@ -352,19 +369,19 @@ mod tests {
     fn hand_straight() {
         // First straight starts with ace and ends in 5
         let card1 = Card::new(1);
-        let card2 = Card::new(2);
-        let card3 = Card::new(3);
-        let card4 = Card::new(4);
-        let card5 = Card::new(5);
+        let card2 = Card::new(15);
+        let card3 = Card::new(29);
+        let card4 = Card::new(43);
+        let card5 = Card::new(44);
         let hand = vec![card1, card4, card2, card5, card3];
 
         assert_eq!(10, check_hand(&hand));
         
         // Second straight starts with 10 and ends in A
-        let card1 = Card::new(10);
-        let card2 = Card::new(11);
-        let card3 = Card::new(12);
-        let card4 = Card::new(13);
+        let card1 = Card::new(23);
+        let card2 = Card::new(24);
+        let card3 = Card::new(25);
+        let card4 = Card::new(26);
         let card5 = Card::new(1);
         let hand2 = vec![card5, card2, card1, card4, card3];
 
@@ -392,6 +409,19 @@ mod tests {
     }
 
     #[test]
+    fn hand_flush() {
+        // All with the spades suit
+        let card1 = Card::new(1);
+        let card2 = Card::new(2);
+        let card3 = Card::new(5);
+        let card4 = Card::new(10);
+        let card5 = Card::new(13);
+        let hand = vec![card5, card4, card2, card1, card3];
+    
+        assert_eq!(15, check_hand(&hand));
+    }
+
+    #[test]
     fn hand_four_of_a_kind() {
         let j_one = Card::new(11); // J of spades
         let j_two = Card::new(24); // J of hears
@@ -402,5 +432,38 @@ mod tests {
 
         // Four of a kind return 20 points
         assert_eq!(20, check_hand(&hand));
+    }
+
+    #[test]
+    fn hand_straight_flush() {
+        let card1 = Card::new(16);
+        let card2 = Card::new(17);
+        let card3 = Card::new(18);
+        let card4 = Card::new(19);
+        let card5 = Card::new(20);
+        let hand = vec![card5, card4, card2, card1, card3];
+
+        assert_eq!(30, check_hand(&hand));
+    }
+
+    #[test]
+    fn hand_royal_flush() {
+        let card1 = Card::new(40);
+        let card2 = Card::new(49);
+        let card3 = Card::new(50);
+        let card4 = Card::new(51);
+        let card5 = Card::new(52);
+        let hand = vec![card5, card4, card2, card1, card3];
+
+        assert_eq!(40, check_hand(&hand));
+
+        let card1 = Card::new(27);
+        let card2 = Card::new(49);
+        let card3 = Card::new(50);
+        let card4 = Card::new(51);
+        let card5 = Card::new(52);
+        let hand2 = vec![card5, card4, card2, card1, card3];
+
+        assert_ne!(40, check_hand(&hand2));
     }
 }

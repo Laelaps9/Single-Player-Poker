@@ -339,10 +339,13 @@ fn render_help<'a>(toggle: &bool) -> Paragraph<'a> {
 fn render_message<'a>(points: &i32) -> (Paragraph<'a>, &str) {
     let poker_hand = match points {
         1 => "Pair!",
-        3 => "Two pair!",
+        3 => "Two Pair!",
         5 => "Three of a kind!",
         10 => "Straight!",
+        15 => "Flush!",
         20 => "Four of a kind!",
+        30 => "Straight Flush!",
+        40 => "Royal Flush!",
         _ => "Nothing!"
     };
 
@@ -455,7 +458,7 @@ mod tests {
     #[test]
     fn display_two_pair() {
         let (_par, poker_hand) = render_message(&3);
-        assert_eq!("Two pair!", poker_hand);
+        assert_eq!("Two Pair!", poker_hand);
     }
 
     #[test]
@@ -471,8 +474,26 @@ mod tests {
     }
 
     #[test]
+    fn display_flush() {
+        let (_par, poker_hand) = render_message(&15);
+        assert_eq!("Flush!", poker_hand);
+    }
+
+    #[test]
     fn display_four_of_a_kind() {
         let (_par, poker_hand) = render_message(&20);
         assert_eq!("Four of a kind!", poker_hand);
+    }
+
+    #[test]
+    fn display_straight_flush() {
+        let (_par, poker_hand) = render_message(&30);
+        assert_eq!("Straight Flush!", poker_hand);
+    }
+
+    #[test]
+    fn display_royal_flush() {
+        let (_par, poker_hand) = render_message(&40);
+        assert_eq!("Royal Flush!", poker_hand);
     }
 }
