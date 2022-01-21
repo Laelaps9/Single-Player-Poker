@@ -89,7 +89,21 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
     }
 
     // Straight
-    rank_keys.sort();
+    if rank_keys.len() == 5 {
+        rank_keys.sort();
+        let mut str_found = straight(&rank_keys[..]);
+
+        // If not found and there's an ace in the hand
+        // check again counting the ace as its high value
+        if !str_found && rank_keys.contains(&1) {
+            rank_keys.push(14);
+            str_found = straight(&rank_keys[1..]);
+        }
+
+        if str_found {
+            return 10;
+        }
+    }
 
     // Three of a kind
     if rank_values.contains(&3) {
@@ -129,6 +143,20 @@ pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
 
 pub fn generate_deck() -> Vec<u8> {
     return (1..53).collect::<Vec<u8>>();
+}
+
+pub fn straight(hand: &[u8]) -> bool {
+    let mut past = hand[0] - 1;
+
+    for card in hand {
+        if past == card - 1 {
+            past = *card;
+        } else {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 pub fn reset_deck(deck: &mut Vec<u8>, hand: &mut Vec<Card>, discarded: &mut Vec<u8>) {
@@ -318,6 +346,49 @@ mod tests {
 
         // Three of a kind return 5 points
         assert_eq!(5, check_hand(&hand));
+    }
+
+    #[test]
+    fn hand_straight() {
+        // First straight starts with ace and ends in 5
+        let card1 = Card::new(1);
+        let card2 = Card::new(2);
+        let card3 = Card::new(3);
+        let card4 = Card::new(4);
+        let card5 = Card::new(5);
+        let hand = vec![card1, card4, card2, card5, card3];
+
+        assert_eq!(10, check_hand(&hand));
+        
+        // Second straight starts with 10 and ends in A
+        let card1 = Card::new(10);
+        let card2 = Card::new(11);
+        let card3 = Card::new(12);
+        let card4 = Card::new(13);
+        let card5 = Card::new(1);
+        let hand2 = vec![card5, card2, card1, card4, card3];
+
+        assert_eq!(10, check_hand(&hand2));
+
+        // Third hand doesn't have a straight
+        let card1 = Card::new(2);
+        let card2 = Card::new(3);
+        let card3 = Card::new(4);
+        let card4 = Card::new(5);
+        let card5 = Card::new(5);
+        let hand3 = vec![card5, card4, card2, card1, card3];
+
+        assert_ne!(10, check_hand(&hand3));
+
+        // Fourth hand doesn't have a straight
+        let card1 = Card::new(11);
+        let card2 = Card::new(12);
+        let card3 = Card::new(13);
+        let card4 = Card::new(14);
+        let card5 = Card::new(15);
+        let hand4 = vec![card5, card4, card2, card1, card3];
+
+        assert_ne!(10, check_hand(&hand4));
     }
 
     #[test]
