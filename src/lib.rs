@@ -90,6 +90,12 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
 
     // Full house
 
+    // Four of a kind is the only other way
+    // to have no more than 2 different ranks
+    if rank_values.len() == 2 {
+        return 18;
+    }
+
     // Flush
     let suit_keys: Vec<&String> = suits.into_keys().collect();
     let flush_found = suit_keys.len() == 1;
@@ -410,7 +416,7 @@ mod tests {
 
     #[test]
     fn hand_flush() {
-        // All with the spades suit
+        // All have the spades suit
         let card1 = Card::new(1);
         let card2 = Card::new(2);
         let card3 = Card::new(5);
@@ -419,6 +425,28 @@ mod tests {
         let hand = vec![card5, card4, card2, card1, card3];
     
         assert_eq!(15, check_hand(&hand));
+    }
+
+    #[test]
+    fn hand_full_house() {
+        // All with the spades suit
+        let card1 = Card::new(1); // A of spades
+        let card2 = Card::new(14); // A of hearts
+        let card3 = Card::new(27); // A of diamonds
+        let card4 = Card::new(5); // 5 of spades
+        let card5 = Card::new(44); // 5 of clubs
+        let hand = vec![card5, card4, card2, card1, card3];
+    
+        assert_eq!(18, check_hand(&hand));
+
+        let card1 = Card::new(1); // A of spades
+        let card2 = Card::new(14); // A of hearts
+        let card3 = Card::new(27); // A of diamonds
+        let card4 = Card::new(40); // A of clubs
+        let card5 = Card::new(44); // 5 of clubs
+        let hand = vec![card5, card4, card2, card1, card3];
+
+        assert_ne!(18, check_hand(&hand)); // Four of a kind is returned
     }
 
     #[test]
@@ -436,11 +464,11 @@ mod tests {
 
     #[test]
     fn hand_straight_flush() {
-        let card1 = Card::new(16);
-        let card2 = Card::new(17);
-        let card3 = Card::new(18);
-        let card4 = Card::new(19);
-        let card5 = Card::new(20);
+        let card1 = Card::new(16); // 3 of hearts
+        let card2 = Card::new(17); // 4 of hearts
+        let card3 = Card::new(18); // 5 of heats
+        let card4 = Card::new(19); // 6 of hearts
+        let card5 = Card::new(20); // 7 of hearts
         let hand = vec![card5, card4, card2, card1, card3];
 
         assert_eq!(30, check_hand(&hand));
@@ -448,16 +476,16 @@ mod tests {
 
     #[test]
     fn hand_royal_flush() {
-        let card1 = Card::new(40);
-        let card2 = Card::new(49);
-        let card3 = Card::new(50);
-        let card4 = Card::new(51);
-        let card5 = Card::new(52);
+        let card1 = Card::new(40); // A of clubs
+        let card2 = Card::new(49); // 10 of clubs
+        let card3 = Card::new(50); // J of clubs
+        let card4 = Card::new(51); // Q of clubs
+        let card5 = Card::new(52); // K of clubs
         let hand = vec![card5, card4, card2, card1, card3];
 
         assert_eq!(40, check_hand(&hand));
 
-        let card1 = Card::new(27);
+        let card1 = Card::new(27); // A of diamonds
         let card2 = Card::new(49);
         let card3 = Card::new(50);
         let card4 = Card::new(51);

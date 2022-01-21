@@ -343,6 +343,7 @@ fn render_message<'a>(points: &i32) -> (Paragraph<'a>, &str) {
         5 => "Three of a kind!",
         10 => "Straight!",
         15 => "Flush!",
+        18 => "Full House!",
         20 => "Four of a kind!",
         30 => "Straight Flush!",
         40 => "Royal Flush!",
@@ -477,6 +478,12 @@ mod tests {
     fn display_flush() {
         let (_par, poker_hand) = render_message(&15);
         assert_eq!("Flush!", poker_hand);
+    }
+
+    #[test]
+    fn display_full_house() {
+        let (_par, poker_hand) = render_message(&18);
+        assert_eq!("Full House!", poker_hand);
     }
 
     #[test]
