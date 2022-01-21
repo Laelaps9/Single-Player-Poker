@@ -5,7 +5,7 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Card {
     pub suit: String,
-    pub rank: String,
+    pub rank: u8,
     pub value: u8,
 }
 
@@ -21,21 +21,26 @@ impl Card {
             _ => panic!("Error"),
         };
 
-        let tmp: u8 = value % 13;
-        let rank = match tmp {
-            1 => "A".to_string(),
-            2..=10 => tmp.to_string(),
-            11 => "J".to_string(),
-            12 => "Q".to_string(),
-            0 => "K".to_string(),
-            _ => panic!("Error"),
+        let rank: u8 = if let 0 = value % 13 {
+            13
+        } else {
+            value % 13
         };
 
         Card { suit, rank, value }
     }
 
-    pub fn get_card(&self) -> String {
-        return format!("{} of {}", self.rank, self.suit);
+    pub fn get_card(&self) -> (String, String) {
+        let rank = match self.rank {
+            1 => "A".to_string(),
+            2..=10 => self.rank.to_string(),
+            11 => "J".to_string(),
+            12 => "Q".to_string(),
+            13 => "K".to_string(),
+            _ => panic!("Error"),
+        };
+
+        (rank, self.suit.clone())
     }
 }
 
@@ -53,32 +58,47 @@ pub fn change_cards(deck: &mut Vec<u8>, hand: &mut Vec<Card>, to_change: &Vec<us
 }
 
 pub fn check_hand(hand: &Vec<Card>) -> i32 {
-    //let mut suits = HashMap::new();
+    let mut suits = HashMap::new();
     let mut ranks = HashMap::new();
+    let mut rank_keys: Vec<u8> = vec![];
+    let mut rank_values: Vec<i32> = vec![];
 
     for card in hand {
-        //let counter = groups.entry(&card.suit).or_insert(0);
-        let counter = ranks.entry(&card.value % 13).or_insert(0);
-        *counter += 1;
+        let suit_counter = suits.entry(&card.suit).or_insert(0);
+        let rank_counter = ranks.entry(&card.rank).or_insert(0);
+
+        *suit_counter += 1;
+        *rank_counter += 1;
     }
 
-    let values: Vec<i32> = ranks.into_values().collect();
+    let ranks_iter = ranks.into_iter();
+
+    for rank in ranks_iter {
+        // rank_keys represents the ranks themselves
+        // in a vec
+        rank_keys.push(*rank.0);
+
+        // rank_values represents how many times
+        // each rank repeated
+        rank_values.push(rank.1);
+    }
 
     // Four of a kind
-    if values.contains(&4) {
+    if rank_values.contains(&4) {
         return 20;
     }
 
     // Straight
+    rank_keys.sort();
 
     // Three of a kind
-    if values.contains(&3) {
+    if rank_values.contains(&3) {
         return 5;
     }
 
     let mut count_pairs = 0;
-    for v in values {
-        if v == 2 {
+    for r in rank_values {
+        if r == 2 {
             count_pairs += 1;
         }
     }
@@ -134,7 +154,7 @@ mod tests {
             Card::new(1),
             Card {
                 suit: "Spades".to_string(),
-                rank: "A".to_string(),
+                rank: 1,
                 value: 1,
             }
         );
@@ -143,7 +163,7 @@ mod tests {
             Card::new(13),
             Card {
                 suit: "Spades".to_string(),
-                rank: "K".to_string(),
+                rank: 13,
                 value: 13,
             }
         );
@@ -155,7 +175,7 @@ mod tests {
             Card::new(14),
             Card {
                 suit: "Hearts".to_string(),
-                rank: "A".to_string(),
+                rank: 1,
                 value: 14,
             }
         );
@@ -164,7 +184,7 @@ mod tests {
             Card::new(26),
             Card {
                 suit: "Hearts".to_string(),
-                rank: "K".to_string(),
+                rank: 13,
                 value: 26,
             }
         );
@@ -176,7 +196,7 @@ mod tests {
             Card::new(27),
             Card {
                 suit: "Diamonds".to_string(),
-                rank: "A".to_string(),
+                rank: 1,
                 value: 27,
             }
         );
@@ -185,7 +205,7 @@ mod tests {
             Card::new(39),
             Card {
                 suit: "Diamonds".to_string(),
-                rank: "K".to_string(),
+                rank: 13,
                 value: 39,
             }
         );
@@ -197,7 +217,7 @@ mod tests {
             Card::new(40),
             Card {
                 suit: "Clubs".to_string(),
-                rank: "A".to_string(),
+                rank: 1,
                 value: 40,
             }
         );
@@ -206,7 +226,7 @@ mod tests {
             Card::new(52),
             Card {
                 suit: "Clubs".to_string(),
-                rank: "K".to_string(),
+                rank: 13,
                 value: 52,
             }
         );

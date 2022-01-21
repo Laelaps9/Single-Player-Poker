@@ -121,10 +121,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                         )
                         .split(chunks[1]);
                     let game = render_game(&mut hand, &to_change);
-                    let ascii_card = render_ascii_card(
-                        &hand[hand_list_state.selected().unwrap()].rank,
-                        &hand[hand_list_state.selected().unwrap()].suit,
-                        );
+                    let (rank, suit) = &hand[hand_list_state.selected().unwrap()].get_card();
+                    let ascii_card = render_ascii_card(rank, suit);
+
                     rect.render_stateful_widget(game, poker_chunks[0], &mut hand_list_state);
                     rect.render_widget(ascii_card, poker_chunks[1]);
 
@@ -265,7 +264,8 @@ fn render_game<'a>(hand: &mut Vec<poker::Card>,
 
     let mut strings: Vec<String> = vec![];
     for i in 0..5 {
-        let mut string = hand[i].get_card();
+        let (rank, suit) = hand[i].get_card();
+        let mut string = format!("{rank} of {suit}");
         if to_change.contains(&i) {
             string.push('*');
         }
