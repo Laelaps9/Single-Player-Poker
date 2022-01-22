@@ -1,6 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::HashMap;
+use std::process;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Card {
@@ -18,7 +19,7 @@ impl Card {
             1 => "Hearts".to_string(),
             2 => "Diamonds".to_string(),
             3 => "Clubs".to_string(),
-            _ => panic!("Error"),
+            _ => panic!("Invalid suit value: {}", (value - 1) / 13),
         };
 
         let rank: u8 = if let 0 = value % 13 {
@@ -37,21 +38,28 @@ impl Card {
             11 => "J".to_string(),
             12 => "Q".to_string(),
             13 => "K".to_string(),
-            _ => panic!("Error"),
+            _ => panic!("Invalid rank: {}", self.rank),
         };
 
         (rank, self.suit.clone())
     }
 }
 
-pub fn change_cards(deck: &mut Vec<u8>, hand: &mut Vec<Card>, to_change: &Vec<usize>) -> Vec<u8> {
+pub fn change_cards(deck: &mut Vec<u8>,
+    hand: &mut Vec<Card>, 
+    to_change: &Vec<usize>) -> Vec<u8> {
+
     let mut discarded: Vec<u8> = vec![];
 
     // Removed cards are sent to the discarded pile
     // New cards are popped from the deck
     for i in to_change {
         discarded.push(hand.remove(*i).value);
-        hand.insert(*i, Card::new(deck.pop().unwrap()));
+        let new_card = deck.pop().unwrap_or_else(|| {
+            eprintln!("Problem extracting card from deck");
+            process::exit(1);
+        });
+        hand.insert(*i, Card::new(new_card));
     }
 
     return discarded;
@@ -61,7 +69,7 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
     let mut suits = HashMap::new();
     let mut ranks = HashMap::new();
     let mut rank_keys: Vec<u8> = vec![];
-    let mut rank_values: Vec<i32> = vec![];
+    let mut ranks_count: Vec<i32> = vec![];
 
     for card in hand {
         let suit_counter = suits.entry(&card.suit).or_insert(0);
@@ -78,13 +86,13 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
         // in a vec
         rank_keys.push(*rank.0);
 
-        // rank_values represents how many times
+        // ranks_count represents how many times
         // each rank repeated
-        rank_values.push(rank.1);
+        ranks_count.push(rank.1);
     }
 
-    // Four of a kind -> +20 points
-    if rank_values.contains(&4) {
+    // Four of a kind
+    if ranks_count.contains(&4) {
         return 20;
     }
 
@@ -92,7 +100,7 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
 
     // Four of a kind is the only other way
     // to have no more than 2 different ranks
-    if rank_values.len() == 2 {
+    if ranks_count.len() == 2 {
         return 18;
     }
 
@@ -117,37 +125,35 @@ pub fn check_hand(hand: &Vec<Card>) -> i32 {
     // Match to find straight flush, just flush or just straight
     match (flush_found, straight_found) {
         (false, false) => {},
-        (true, false) => return 15, // Flush -> +15 points
-        (false, true) => return 10, // Straight -> +10 points
+        (true, false) => return 15, // Flush
+        (false, true) => return 10, // Straight
         (true, true) => {
             if rank_keys[rank_keys.len() - 1] == 14 {
-                return 40; // Royal Flush -> +40 points
+                return 40; // Royal Flush
             }
 
-            return 30; // Straight Flush -> +30 points
+            return 30; // Straight Flush
         }
     }
 
-    // Three of a kind -> +5 points
-    if rank_values.contains(&3) {
+    // Three of a kind
+    if ranks_count.contains(&3) {
         return 5;
     }
 
     let mut count_pairs = 0;
-    for r in rank_values {
+    for r in ranks_count {
         if r == 2 {
             count_pairs += 1;
         }
     }
 
     // Pairs
-    let score = match count_pairs {
-        1 => 1, // -> Pair -> +1 point
-        2 => 3, // -> Two pair -> +3 points
-        _ => 0,
+    match count_pairs {
+        1 => return 1, // Pair
+        2 => return 3, // Two pair
+        _ => return 0, // Nothing
     };
-
-    return score;
 }
 
 pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
@@ -157,7 +163,10 @@ pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
     deck.shuffle(&mut rng);
 
     for _i in 0..5 {
-        let card_val = deck.pop().unwrap();
+        let card_val = deck.pop().unwrap_or_else(|| {
+            eprintln!("Problem extracting card from deck");
+            process::exit(1);
+        });
         cards.push(Card::new(card_val));
     }
 
@@ -166,6 +175,16 @@ pub fn deal(deck: &mut Vec<u8>) -> Vec<Card> {
 
 pub fn generate_deck() -> Vec<u8> {
     return (1..53).collect::<Vec<u8>>();
+}
+
+pub fn reset_deck(deck: &mut Vec<u8>, hand: &mut Vec<Card>, discarded: &mut Vec<u8>) {
+    deck.append(discarded);
+
+    for card in hand {
+        deck.push(card.value);
+    }
+
+    discarded.clear();
 }
 
 pub fn straight(hand: &[u8]) -> bool {
@@ -180,17 +199,6 @@ pub fn straight(hand: &[u8]) -> bool {
     }
 
     return true;
-}
-
-pub fn reset_deck(deck: &mut Vec<u8>, hand: &mut Vec<Card>, discarded: &mut Vec<u8>) {
-    deck.append(discarded);
-
-    for card in hand {
-        deck.push(card.value);
-    }
-
-    discarded.clear();
-
 }
 
 #[cfg(test)]
@@ -283,6 +291,7 @@ mod tests {
         );
     }
 
+    // Functions tests
     #[test]
     fn test_change() {
         let mut deck = generate_deck();
@@ -330,6 +339,19 @@ mod tests {
 
         // The discarded pile is cleared
         assert_eq!(0, discarded.len());
+    }
+
+    // Hand combinations tests
+    #[test]
+    fn hand_nothing() {
+        let card1 = Card::new(10); 
+        let card2 = Card::new(8);
+        let card3 = Card::new(42);
+        let card4 = Card::new(17);
+        let card5 = Card::new(26);
+        let hand = vec![card1, card2, card3, card4, card5];
+
+        assert_eq!(0, check_hand(&hand));
     }
 
     #[test]

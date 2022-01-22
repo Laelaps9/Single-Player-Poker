@@ -3,6 +3,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use single_player_poker as poker;
+use std::process;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -32,7 +33,7 @@ enum Screen {
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     // stdin won't be printed and input isn't buffered
-    enable_raw_mode().expect("can run in raw mode");
+    enable_raw_mode().expect("Can run in raw mode");
 
     // mpsc channel to communicate between input handler and renderer
     let (tx, rx) = mpsc::channel();
@@ -46,9 +47,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                .checked_sub(last_tick.elapsed())
                .unwrap_or_else(|| Duration::from_secs(0));
 
-           if event::poll(timeout).expect("poll works") {
-               if let CEvent::Key(key) = event::read().expect("can read events") {
-                   tx.send(Event::Input(key)).expect("can send events");
+           if event::poll(timeout).expect("Poll works") {
+               if let CEvent::Key(key) = event::read().expect("Can read events") {
+                   tx.send(Event::Input(key)).expect("Can send events");
                }
            }
 
@@ -117,14 +118,25 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     let poker_chunks = Layout::default()
                         .direction(Direction::Horizontal)
                         .constraints(
-                            [Constraint::Percentage(40), Constraint::Percentage(60)].as_ref(),
+                            [
+                            Constraint::Percentage(40), 
+                            Constraint::Percentage(60)
+                            ]
+                            .as_ref(),
                         )
                         .split(chunks[1]);
+
                     let game = render_game(&mut hand, &to_change);
-                    let (rank, suit) = &hand[hand_list_state.selected().unwrap()].get_card();
+                    let selected_card = hand_list_state.selected()
+                        .unwrap_or_else(|| {
+                            eprintln!("Problem getting selected card");
+                            process::exit(1);
+                    });
+                    let (rank, suit) = &hand[selected_card].get_card();
                     let ascii_card = render_ascii_card(rank, suit);
 
-                    rect.render_stateful_widget(game, poker_chunks[0], &mut hand_list_state);
+                    rect.render_stateful_widget(game, poker_chunks[0],
+                                                &mut hand_list_state);
                     rect.render_widget(ascii_card, poker_chunks[1]);
 
                     if !game_active {
@@ -166,7 +178,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                         hand = poker::deal(&mut deck)
                     } else {
                         if to_change.len() > 0 {
-                            discarded = poker::change_cards(&mut deck, &mut hand, &to_change);
+                            discarded = poker::change_cards(&mut deck,
+                                                            &mut hand, 
+                                                            &to_change);
                             to_change.clear();
                         }
                         points = poker::check_hand(&hand);
@@ -178,7 +192,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 KeyCode::Char(' ') => {
                     if game_active {
-                        let selection = hand_list_state.selected().unwrap();
+                        let selection = hand_list_state.selected()
+                            .unwrap_or_else(|| {
+                                eprintln!("Problem getting selected card");
+                                process::exit(1);
+                            });
 
                         if to_change.contains(&selection) {
                             to_change.retain(|i| i != &selection);
@@ -202,6 +220,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// Rendering functions
 fn render_ascii_card<'a>(rank: &String, suit: &String) -> Paragraph<'a> {
     let suit_symbol = match &suit[..] {
         "Spades" => "♠",
