@@ -6,6 +6,7 @@
 To be able to run the program you need:
 - rustc: version 1.58.0 minimum
 - cargo: version 1.58.0 minimum
+- glibc: version 2.33 minimum
 
 ## How to run
 Clone the repo
