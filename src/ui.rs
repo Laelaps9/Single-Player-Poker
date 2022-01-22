@@ -155,6 +155,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('q') => {
                     disable_raw_mode()?;
                     terminal.show_cursor()?;
+                    terminal.clear()?;
                     break;
                 }
                 KeyCode::Down => {
