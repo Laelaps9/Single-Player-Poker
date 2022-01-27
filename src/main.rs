@@ -1,5 +1,6 @@
 use std::process;
 
+mod game;
 mod ui;
 
 fn main() {

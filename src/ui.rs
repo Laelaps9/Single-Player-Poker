@@ -2,7 +2,8 @@ use crossterm::{
     event::{self, Event as CEvent, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use single_player_poker as poker;
+use single_player_poker::Card;
+use crate::game::poker as poker;
 use std::process;
 use std::sync::mpsc;
 use std::thread;
@@ -18,6 +19,8 @@ use tui::{
     Terminal,
 };
 use std::io;
+
+//mod poker;
 
 // Types of events
 enum Event<I> {
@@ -70,7 +73,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut active_screen = Screen::Welcome;
     let mut game_active = false;
     let mut deck: Vec<u8> = poker::generate_deck();
-    let mut hand: Vec<poker::Card> = vec![];
+    let mut hand: Vec<Card> = vec![];
     let mut to_change: Vec<usize> = vec![];
     let mut discarded: Vec<u8> = vec![];
     let mut score = 0;
@@ -273,7 +276,7 @@ fn render_ascii_card<'a>(rank: &String, suit: &String) -> Paragraph<'a> {
     card
 }
 
-fn render_game<'a>(hand: &mut Vec<poker::Card>,
+fn render_game<'a>(hand: &mut Vec<Card>,
     to_change: &Vec<usize>) -> List<'a> {
 
     // Game block
